@@ -524,7 +524,7 @@ Deno.test({
     const login = await request("/api/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: "admin", password: "admin" }),
+      body: JSON.stringify({ id: "admin", password: "adminadmin" }),
     });
     const cookie = login.headers.get("set-cookie")?.split(";")[0] ?? "";
     const blocked = await request("/api/sites", { headers: { cookie } });
@@ -535,7 +535,7 @@ Deno.test({
       method: "PUT",
       headers: { cookie, "content-type": "application/json" },
       body: JSON.stringify({
-        currentPassword: "admin",
+        currentPassword: "adminadmin",
         newPassword: "new-password-123",
       }),
     });
@@ -630,7 +630,7 @@ Deno.test({
     const userAdminLogin = await request("/api/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: "admin", password: "admin" }),
+      body: JSON.stringify({ id: "admin", password: "adminadmin" }),
     });
     const userAdminCookie = userAdminLogin.headers.get("set-cookie")?.split(
       ";",
@@ -642,7 +642,7 @@ Deno.test({
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        currentPassword: "admin",
+        currentPassword: "adminadmin",
         newPassword: "new-admin-password",
       }),
     });

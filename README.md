@@ -1,5 +1,10 @@
 # Chiracy チラシィ - かんたんAIチラシ作成、チラシィ
 
+サービス運営：[Code for FUKUI](https://code4fukui.github.io/)
+
+本サービスは[code4fukui/chiracy](https://github.com/code4fukui/chiracy)で
+オープンソースとして公開しています。
+
 ## 使い方
 
 作成一覧は「企画」「チラシ」「サイト」「アプリ」の順に表示します。
@@ -112,7 +117,7 @@ OPENAI_IMAGE_COST_USD=0.034
 `.env` の `PORT` で起動ポートを指定します。上記の例では `http://localhost:8100`
 を開いてください。データは `data/chiracy.sqlite` に保存されます。
 
-初期管理者は ID `admin`、パスワード `admin`
+初期管理者は ID `admin`、パスワード `adminadmin`
 です。初回ログイン時にパスワード変更が必要です。
 
 管理者も通常のトップ画面からログインします。管理者としてログインすると、同じURLに

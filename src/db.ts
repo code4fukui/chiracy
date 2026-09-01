@@ -96,7 +96,7 @@ export async function openDatabase(
   if (!db.prepare("SELECT 1 FROM users WHERE id = 'admin'").get()) {
     db.prepare(
       "INSERT INTO users(id, password_hash, is_admin, must_change_password) VALUES (?, ?, 1, 1)",
-    ).run("admin", await hashPassword("admin"));
+    ).run("admin", await hashPassword("adminadmin"));
   }
   return db;
 }

@@ -178,6 +178,9 @@ async function staticFile(path: string): Promise<Response> {
     "/__admin_internal": ["admin.html", "text/html; charset=utf-8"],
     "/admin.js": ["admin.js", "text/javascript; charset=utf-8"],
     "/terms": ["terms.html", "text/html; charset=utf-8"],
+    "/logo.png": ["logo.png", "image/png"],
+    "/logo-square.png": ["logo-square.png", "image/png"],
+    "/logo-icon.png": ["logo-icon.png", "image/png"],
     "/style.css": ["style.css", "text/css; charset=utf-8"],
   };
   const file = files[path];

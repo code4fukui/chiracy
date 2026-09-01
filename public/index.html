@@ -4,27 +4,35 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Chiracy チラシィ</title>
+    <link rel="icon" type="image/png" href="/logo-icon.png">
+    <link rel="apple-touch-icon" href="/logo-icon.png">
     <link rel="stylesheet" href="/style.css">
   </head>
   <body>
     <header>
-      <a class="brand" href="/">Chiracy <small>チラシィ</small></a>
+      <a class="brand"
+        href="/"><img src="/logo.png" alt="Chiracy まちの声を、未来のチカラに。"></a>
       <div id="user-menu"
         hidden><span id="points"></span><button id="user-id" class="quiet"></button><button id="logout" class="quiet">ログアウト</button></div>
     </header>
     <main>
       <section id="auth" class="auth-card">
-        <p class="eyebrow">かんたんAIチラシ作成、チラシィ</p>
-        <h1>話すだけで、<br>アイデアがカタチになる。</h1>
-        <form id="auth-form">
-          <label>ID <input name="id" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_-]+" required autocomplete="username"></label>
-          <label>パスワード <input name="password" type="password" maxlength="128" required autocomplete="current-password"></label>
-          <label
-            class="terms-consent"><input name="acceptedTerms" type="checkbox"> <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>に同意して新規登録する</label>
-          <p id="auth-error" class="error"></p>
-          <div
-            class="actions"><button type="submit" name="action" value="login">ログイン</button><button type="submit" name="action" value="register" class="secondary">新規登録</button></div>
-        </form>
+        <img class="auth-logo" src="/logo-square.png" alt="" aria-hidden="true">
+        <div class="auth-content">
+          <p class="eyebrow">AIで、アイデアをカタチに。</p>
+          <h1>まちの声を、未来のチカラに。</h1>
+          <form id="auth-form">
+            <label>ID <input name="id" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_-]+" required autocomplete="username"></label>
+            <label>パスワード <input name="password" type="password" minlength="8" maxlength="128" required autocomplete="current-password"></label>
+            <label
+              class="terms-consent"><input name="acceptedTerms" type="checkbox"> <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>に同意して新規登録する</label>
+            <p id="auth-error" class="error"></p>
+            <div
+              class="actions"><button type="submit" name="action" value="login">ログイン</button><button type="submit" name="action" value="register" class="secondary">新規登録</button></div>
+          </form>
+          <p
+            class="service-credit">サービス運営 <a href="https://code4fukui.github.io/" target="_blank" rel="noopener">Code for FUKUI</a><br><a href="https://github.com/code4fukui/chiracy" target="_blank" rel="noopener">オープンソース code4fukui/chiracy</a></p>
+        </div>
       </section>
 
       <section id="password-change" class="auth-card" hidden>
@@ -74,6 +82,9 @@
         <div
           class="trash-footer"><button id="trash-button" class="quiet" type="button">🗑️ ゴミ箱</button></div>
         <footer class="dashboard-footer">
+          <span>サービス運営 <a href="https://code4fukui.github.io/" target="_blank" rel="noopener">Code for FUKUI</a></span>
+          <a href="https://github.com/code4fukui/chiracy" target="_blank"
+            rel="noopener">オープンソース</a>
           <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>
         </footer>
       </section>
