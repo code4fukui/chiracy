@@ -18,7 +18,7 @@
         <h1>話すだけで、<br>アイデアがカタチになる。</h1>
         <form id="auth-form">
           <label>ID <input name="id" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_-]+" required autocomplete="username"></label>
-          <label>パスワード <input name="password" type="password" minlength="8" maxlength="128" required autocomplete="current-password"></label>
+          <label>パスワード <input name="password" type="password" maxlength="128" required autocomplete="current-password"></label>
           <label
             class="terms-consent"><input name="acceptedTerms" type="checkbox"> <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>に同意して新規登録する</label>
           <p id="auth-error" class="error"></p>
