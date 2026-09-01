@@ -43,6 +43,9 @@ import migration014 from "../migrations/014_add_user_level.sql" with {
 import migration015 from "../migrations/015_make_contents_user_wide.sql" with {
   type: "text",
 };
+import migration016 from "../migrations/016_add_last_login.sql" with {
+  type: "text",
+};
 
 export type Database = DatabaseSync;
 
@@ -80,6 +83,7 @@ export async function openDatabase(
     ["013_add_terms_acceptance.sql", migration013],
     ["014_add_user_level.sql", migration014],
     ["015_make_contents_user_wide.sql", migration015],
+    ["016_add_last_login.sql", migration016],
   ] as const;
   for (const [version, sql] of migrations) {
     if (applied.get(version)) continue;

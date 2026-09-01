@@ -651,6 +651,16 @@ Deno.test({
         headers: { cookie: userAdminCookie },
       })).status !== 200
     ) throw new Error("admin user cannot access admin API");
+    const adminUsers = await (await request("/api/admin/users", {
+      headers: { cookie: userAdminCookie },
+    })).json();
+    const adminSummary = adminUsers.find((item: { id: string }) =>
+      item.id === "admin"
+    );
+    if (
+      adminSummary.level !== 1 || adminSummary.total_points_used !== 0 ||
+      !adminSummary.created_at || !adminSummary.last_login_at
+    ) throw new Error("admin user activity fields are missing");
     if (
       (await request("/api/sites", { headers: { cookie: userAdminCookie } }))
         .status !== 403

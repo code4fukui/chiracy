@@ -371,9 +371,19 @@ export function createHandler(
         const session = randomId();
         const expires = new Date(Date.now() + sessionMaxAge * 1000)
           .toISOString();
-        db.prepare(
-          "INSERT INTO sessions(id, user_id, expires_at) VALUES (?, ?, ?)",
-        ).run(session, account.id, expires);
+        db.exec("BEGIN");
+        try {
+          db.prepare(
+            "INSERT INTO sessions(id, user_id, expires_at) VALUES (?, ?, ?)",
+          ).run(session, account.id, expires);
+          db.prepare(
+            "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?",
+          ).run(account.id);
+          db.exec("COMMIT");
+        } catch (cause) {
+          db.exec("ROLLBACK");
+          throw cause;
+        }
         return json({ ok: true }, 200, {
           "set-cookie": sessionCookie(session, request),
         });
@@ -397,8 +407,13 @@ export function createHandler(
         if (url.pathname === "/api/admin/users" && method === "GET") {
           return json(
             db.prepare(
-              `SELECT id, points, is_banned, created_at, updated_at
-             FROM users ORDER BY created_at DESC`,
+              `SELECT users.id, users.points, users.level, users.is_banned,
+                users.created_at, users.last_login_at,
+                COALESCE((
+                  SELECT SUM(point_usage.points) FROM point_usage
+                  WHERE point_usage.user_id = users.id
+                ), 0) AS total_points_used
+               FROM users ORDER BY users.created_at DESC`,
             ).all(),
           );
         }

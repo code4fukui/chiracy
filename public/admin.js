@@ -1,5 +1,10 @@
 const $ = (selector) => document.querySelector(selector);
 
+function formatDate(value) {
+  if (!value) return "未記録";
+  return new Date(`${value.replace(" ", "T")}Z`).toLocaleString("ja-JP");
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -36,8 +41,16 @@ async function loadAdmin() {
       pointsInput.value = user.points;
       pointsInput.setAttribute("aria-label", `${user.id}のポイント`);
       points.append(pointsInput);
+      const totalPoints = document.createElement("td");
+      totalPoints.textContent = user.total_points_used.toLocaleString();
+      const level = document.createElement("td");
+      level.textContent = `Lv.${user.level}`;
       const state = document.createElement("td");
       state.textContent = user.is_banned ? "BAN中" : "有効";
+      const createdAt = document.createElement("td");
+      createdAt.textContent = formatDate(user.created_at);
+      const lastLoginAt = document.createElement("td");
+      lastLoginAt.textContent = formatDate(user.last_login_at);
       const actions = document.createElement("td");
       const save = document.createElement("button");
       save.textContent = "保存";
@@ -64,7 +77,16 @@ async function loadAdmin() {
         await loadAdmin();
       });
       actions.append(save, ban);
-      row.append(id, points, state, actions);
+      row.append(
+        id,
+        points,
+        totalPoints,
+        level,
+        state,
+        createdAt,
+        lastLoginAt,
+        actions,
+      );
       tbody.append(row);
     }
   } catch {
