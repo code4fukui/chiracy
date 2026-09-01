@@ -95,6 +95,7 @@ cp .env.example .env
 ```
 
 ```env
+PORT=8100
 OPENAI_API_KEY=sk-...
 # 任意（省略時は gpt-5.6-luna）
 OPENAI_MODEL=gpt-5.6-luna
@@ -108,8 +109,8 @@ OPENAI_TEXT_OUTPUT_USD_PER_MILLION=1.2
 OPENAI_IMAGE_COST_USD=0.034
 ```
 
-`http://localhost:8100` を開いてください。データは `data/chiracy.sqlite`
-に保存されます。
+`.env` の `PORT` で起動ポートを指定します。上記の例では `http://localhost:8100`
+を開いてください。データは `data/chiracy.sqlite` に保存されます。
 
 初期管理者は ID `admin`、パスワード `admin`
 です。初回ログイン時にパスワード変更が必要です。
@@ -152,7 +153,7 @@ UbuntuのaptやSnapで配布されるDenoは最新版より遅れる場合があ
 ```sh
 sudo useradd --system --create-home --home-dir /var/lib/chiracy \
   --shell /usr/sbin/nologin chiracy
-sudo git clone https://github.com/OWNER/chiracy.git /opt/chiracy
+sudo git clone https://github.com/code4fukui/chiracy.git /opt/chiracy
 sudo chown -R chiracy:chiracy /opt/chiracy /var/lib/chiracy
 ```
 

@@ -1219,7 +1219,10 @@ if (import.meta.main) {
   const db = await openDatabase(
     Deno.env.get("DATABASE_PATH") ?? "data/chiracy.sqlite",
   );
-  const port = Number(Deno.env.get("PORT") ?? "8000");
+  const port = Number(Deno.env.get("PORT"));
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error("PORT must be an integer between 1 and 65535");
+  }
   console.log(`Chiracy: http://localhost:${port}`);
   Deno.serve({ port }, createHandler(db));
 }
