@@ -23,6 +23,7 @@ function show(name) {
   for (
     const id of [
       "auth",
+      "home",
       "password-change",
       "dashboard",
       "editor",
@@ -32,7 +33,7 @@ function show(name) {
   ) {
     $(`#${id}`).hidden = id !== name;
   }
-  $("#public-apps").hidden = name !== "auth";
+  $("#public-apps").hidden = !["auth", "home"].includes(name);
   $("#user-menu").hidden = !user;
 }
 
@@ -63,7 +64,7 @@ async function loadPublicApps() {
       link.append(thumbnail, title, author);
       list.append(link);
     }
-    $("#public-apps").hidden = !apps.length || Boolean(user);
+    $("#public-apps").hidden = !apps.length;
   } catch {
     $("#public-apps").hidden = true;
   }
@@ -191,6 +192,12 @@ async function showDashboard() {
   if (!flyers.length) {
     flyerList.innerHTML = '<p class="empty">まだチラシがありません。</p>';
   }
+}
+
+async function showHome(recordHistory = true) {
+  show("home");
+  await loadPublicApps();
+  if (recordHistory) history.pushState({ view: "home" }, "", "/");
 }
 
 function attachDelete(card, type, id, title) {
@@ -748,6 +755,15 @@ $("#logout").addEventListener("click", async () => {
   clearUserDisplay();
   show("auth");
 });
+$("#brand-home").addEventListener("click", async (event) => {
+  if (!user) return;
+  event.preventDefault();
+  await showHome();
+});
+$("#home-dashboard").addEventListener("click", async () => {
+  await showDashboard();
+  history.pushState({ view: "dashboard" }, "", "/");
+});
 $("#new-site").addEventListener(
   "click",
   async () => {
@@ -1085,6 +1101,8 @@ addEventListener("popstate", async (event) => {
       await openFlyer(event.state.id, false);
     } else if (event.state?.view === "plan") {
       await openPlan(event.state.id, false);
+    } else if (event.state?.view === "home") {
+      await showHome(false);
     } else {
       await showDashboard();
     }

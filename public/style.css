@@ -159,6 +159,28 @@ textarea:focus {
   width: min(1100px,calc(100% - 2rem));
   margin: 0 auto 6rem;
 }
+.home-hero {
+  width: min(940px,calc(100% - 2rem));
+  margin: 8vh auto 4rem;
+  padding: clamp(1.5rem,5vw,4rem);
+  display: grid;
+  grid-template-columns: minmax(180px,.75fr) minmax(300px,1.25fr);
+  align-items: center;
+  gap: clamp(2rem,5vw,4rem);
+  border-radius: 28px;
+  background: white;
+  box-shadow: 0 16px 60px #075d6817;
+}
+.home-logo {
+  display: block;
+  width: 100%;
+  border-radius: 22%;
+}
+.home-hero h1 {
+  margin: .2rem 0 1.5rem;
+  font-size: clamp(1rem,5vw,1.9rem);
+  white-space: nowrap;
+}
 .public-apps-heading h2 {
   margin: 0 0 1.2rem;
   font-size: clamp(1.8rem,4vw,2.8rem);
@@ -940,6 +962,15 @@ dialog::backdrop {
   #auth.auth-card {
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 3vh;
+  }
+  .home-logo {
+    width: min(58vw,240px);
+    margin: 0 auto;
   }
   .auth-logo {
     width: min(58vw,240px);
