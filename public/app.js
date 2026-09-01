@@ -23,7 +23,6 @@ function show(name) {
   for (
     const id of [
       "auth",
-      "home",
       "password-change",
       "dashboard",
       "editor",
@@ -33,37 +32,40 @@ function show(name) {
   ) {
     $(`#${id}`).hidden = id !== name;
   }
-  $("#public-apps").hidden = !["auth", "home"].includes(name);
+  $("#public-apps").hidden = name !== "auth";
   $("#user-menu").hidden = !user;
 }
 
-async function loadPublicApps() {
-  const list = $("#public-app-list");
+function renderPublicApps(list, apps) {
   list.replaceChildren();
+  for (const app of apps) {
+    const link = document.createElement("a");
+    link.className = "public-app-card";
+    link.href = app.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    const thumbnail = document.createElement("div");
+    thumbnail.className = "public-app-thumbnail";
+    const preview = document.createElement("iframe");
+    preview.src = app.url;
+    preview.title = `${app.title}のプレビュー`;
+    preview.loading = "lazy";
+    preview.tabIndex = -1;
+    preview.setAttribute("sandbox", "allow-scripts");
+    thumbnail.append(preview);
+    const title = document.createElement("strong");
+    title.textContent = app.title;
+    const author = document.createElement("small");
+    author.textContent = `by ${app.user_id}`;
+    link.append(thumbnail, title, author);
+    list.append(link);
+  }
+}
+
+async function loadPublicApps() {
   try {
     const apps = await api("/api/public/apps");
-    for (const app of apps) {
-      const link = document.createElement("a");
-      link.className = "public-app-card";
-      link.href = app.url;
-      link.target = "_blank";
-      link.rel = "noopener";
-      const thumbnail = document.createElement("div");
-      thumbnail.className = "public-app-thumbnail";
-      const preview = document.createElement("iframe");
-      preview.src = app.url;
-      preview.title = `${app.title}のプレビュー`;
-      preview.loading = "lazy";
-      preview.tabIndex = -1;
-      preview.setAttribute("sandbox", "allow-scripts");
-      thumbnail.append(preview);
-      const title = document.createElement("strong");
-      title.textContent = app.title;
-      const author = document.createElement("small");
-      author.textContent = `by ${app.user_id}`;
-      link.append(thumbnail, title, author);
-      list.append(link);
-    }
+    renderPublicApps($("#public-app-list"), apps);
     $("#public-apps").hidden = !apps.length;
   } catch {
     $("#public-apps").hidden = true;
@@ -118,12 +120,16 @@ async function showDashboard() {
   $("#new-app").textContent = webUnlocked
     ? "＋新規アプリ"
     : "🔒 チラシを1つ作ると解放";
-  const [plans, flyers, sites, apps] = await Promise.all([
+  const [plans, flyers, sites, apps, publicApps] = await Promise.all([
     api("/api/plans"),
     api("/api/flyers"),
     api("/api/sites"),
     api("/api/apps"),
+    api("/api/public/apps"),
   ]);
+  const otherApps = publicApps.filter((app) => app.user_id !== user.id);
+  renderPublicApps($("#dashboard-public-app-list"), otherApps);
+  $("#dashboard-public-app-empty").hidden = Boolean(otherApps.length);
   const planList = $("#plans");
   planList.replaceChildren();
   for (const plan of plans) {
@@ -192,12 +198,6 @@ async function showDashboard() {
   if (!flyers.length) {
     flyerList.innerHTML = '<p class="empty">まだチラシがありません。</p>';
   }
-}
-
-async function showHome(recordHistory = true) {
-  show("home");
-  await loadPublicApps();
-  if (recordHistory) history.pushState({ view: "home" }, "", "/");
 }
 
 function attachDelete(card, type, id, title) {
@@ -758,9 +758,6 @@ $("#logout").addEventListener("click", async () => {
 $("#brand-home").addEventListener("click", async (event) => {
   if (!user) return;
   event.preventDefault();
-  await showHome();
-});
-$("#home-dashboard").addEventListener("click", async () => {
   await showDashboard();
   history.pushState({ view: "dashboard" }, "", "/");
 });
@@ -1101,8 +1098,6 @@ addEventListener("popstate", async (event) => {
       await openFlyer(event.state.id, false);
     } else if (event.state?.view === "plan") {
       await openPlan(event.state.id, false);
-    } else if (event.state?.view === "home") {
-      await showHome(false);
     } else {
       await showDashboard();
     }
