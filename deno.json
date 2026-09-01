@@ -1,0 +1,15 @@
+{
+  "tasks": {
+    "dev": "PORT=8100 deno run --env-file=.env --watch --allow-net --allow-read --allow-write --allow-env=DATABASE_PATH,PORT,OPENAI_API_KEY,OPENAI_MODEL,OPENAI_IMAGE_MODEL,OPENAI_TEXT_INPUT_USD_PER_MILLION,OPENAI_TEXT_CACHED_INPUT_USD_PER_MILLION,OPENAI_TEXT_OUTPUT_USD_PER_MILLION,OPENAI_IMAGE_COST_USD,USD_JPY_RATE src/server.ts",
+    "start": "PORT=8100 deno run --env-file=.env --allow-net --allow-read --allow-write --allow-env=DATABASE_PATH,PORT,OPENAI_API_KEY,OPENAI_MODEL,OPENAI_IMAGE_MODEL,OPENAI_TEXT_INPUT_USD_PER_MILLION,OPENAI_TEXT_CACHED_INPUT_USD_PER_MILLION,OPENAI_TEXT_OUTPUT_USD_PER_MILLION,OPENAI_IMAGE_COST_USD,USD_JPY_RATE src/server.ts"
+  },
+  "imports": {
+    "qrcode": "npm:qrcode@1.5.4"
+  },
+  "fmt": {
+    "exclude": ["data"]
+  },
+  "lint": {
+    "exclude": ["data"]
+  }
+}

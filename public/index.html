@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chiracy チラシィ</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Chiracy <small>チラシィ</small></a>
+      <div id="user-menu"
+        hidden><span id="points"></span><button id="user-id" class="quiet"></button><button id="logout" class="quiet">ログアウト</button></div>
+    </header>
+    <main>
+      <section id="auth" class="auth-card">
+        <p class="eyebrow">かんたんAIチラシ作成、チラシィ</p>
+        <h1>話すだけで、<br>アイデアがカタチになる。</h1>
+        <form id="auth-form">
+          <label>ID <input name="id" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_-]+" required autocomplete="username"></label>
+          <label>パスワード <input name="password" type="password" minlength="8" maxlength="128" required autocomplete="current-password"></label>
+          <label
+            class="terms-consent"><input name="acceptedTerms" type="checkbox"> <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>に同意して新規登録する</label>
+          <p id="auth-error" class="error"></p>
+          <div
+            class="actions"><button type="submit" name="action" value="login">ログイン</button><button type="submit" name="action" value="register" class="secondary">新規登録</button></div>
+        </form>
+      </section>
+
+      <section id="password-change" class="auth-card" hidden>
+        <h1>パスワードを変更</h1>
+        <p>安全のため、初期パスワードを変更してください。</p>
+        <form id="password-form">
+          <label>現在のパスワード <input name="currentPassword" type="password" required></label>
+          <label>新しいパスワード <input name="newPassword" type="password" minlength="8" maxlength="128" required></label>
+          <p class="error"></p><button>変更する</button>
+        </form>
+      </section>
+
+      <section id="dashboard" hidden>
+        <div
+          class="section-title">
+          <div>
+            <p class="eyebrow">CREATE</p>
+            <h1>創ろう</h1>
+          </div>
+        </div>
+        <div class="content-heading">
+          <h2>企画</h2>
+          <button id="new-plan">＋新規企画</button>
+        </div>
+        <div id="plans" class="site-grid"></div>
+        <div class="content-heading content-section-title">
+          <h2>チラシ</h2>
+          <button id="new-flyer">＋新規チラシ</button>
+        </div>
+        <div id="flyers" class="site-grid"></div>
+        <div class="content-heading content-section-title">
+          <h2>サイト</h2>
+          <button id="new-site">＋新規サイト</button>
+        </div>
+        <div id="sites" class="site-grid"></div>
+        <div class="content-heading content-section-title">
+          <h2>アプリ</h2>
+          <button id="new-app">＋新規アプリ</button>
+        </div>
+        <div id="apps" class="site-grid"></div>
+        <div class="content-heading content-section-title">
+          <h2>マイコンテンツ</h2>
+          <button id="contents-button">＋追加・管理</button>
+        </div>
+        <p
+          class="empty">サイトとアプリで共通して使う画像やファイルを管理できます。</p>
+        <div
+          class="trash-footer"><button id="trash-button" class="quiet" type="button">🗑️ ゴミ箱</button></div>
+        <footer class="dashboard-footer">
+          <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>
+        </footer>
+      </section>
+
+      <section id="editor" hidden>
+        <div
+          class="editor-bar"><button id="back" class="quiet">← 一覧へ</button><strong id="site-title"></strong><button id="site-history" class="quiet" type="button">履歴</button><button id="preview-reload" class="quiet" type="button">↻ リロード</button><button id="share" class="quiet" type="button">共有</button><label class="publish"><input id="publish" type="checkbox"> 公開</label><a id="public-url" target="_blank" rel="noopener"></a></div>
+        <div
+          class="mobile-tabs"><button data-pane="chat" class="active">チャット</button><button data-pane="preview">プレビュー</button></div>
+        <div class="editor-panes">
+          <div id="chat-pane" class="chat-pane">
+            <div id="messages" aria-live="polite"></div>
+            <form
+              id="message-form"><textarea name="content" rows="4" maxlength="10000" placeholder="例：背景を青色にして" required></textarea><button>送信</button></form>
+          </div>
+          <div id="preview-pane" class="preview-pane" data-loading="false">
+            <iframe id="preview" title="ウェブサイトのプレビュー"
+              sandbox="allow-scripts"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="plan-editor" hidden>
+        <div
+          class="editor-bar"><button id="plan-back" class="quiet">← 一覧へ</button><strong id="plan-title"></strong><button id="plan-markdown-copy" class="quiet document-format" type="button" disabled>Markdown</button></div>
+        <div class="editor-panes">
+          <div class="chat-pane">
+            <div id="plan-messages" aria-live="polite"></div>
+            <form
+              id="plan-message-form"><textarea name="content" rows="4" maxlength="10000" placeholder="例：地域イベントの集客企画を作って" required></textarea><button>送信</button></form>
+          </div>
+          <div class="plan-preview-pane">
+            <p
+              id="plan-empty">内容を伝えると、ここにMarkdown形式の企画書が表示されます。</p>
+            <article id="plan-preview" class="markdown-document"
+              hidden></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="flyer-editor" hidden>
+        <div
+          class="editor-bar"><button id="flyer-back" class="quiet">← 一覧へ</button><strong id="flyer-title"></strong><button id="flyer-history" class="quiet" type="button">履歴</button><button id="flyer-download" type="button" disabled>JPEGでダウンロード</button></div>
+        <div class="editor-panes">
+          <div class="chat-pane">
+            <div id="flyer-messages" aria-live="polite"></div>
+            <form
+              id="flyer-message-form"><textarea name="content" rows="4" maxlength="10000" placeholder="例：日時を大きくして、背景を明るくして" required></textarea><button>送信</button></form>
+          </div>
+          <div class="flyer-preview-pane" data-loading="false">
+            <p
+              id="flyer-empty">内容を伝えると、ここにA4縦のチラシが表示されます。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <dialog id="contents-dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">CONTENTS</p>
+          <h2>マイコンテンツ</h2>
+        </div>
+        <button id="contents-close" class="quiet" aria-label="閉じる">×</button>
+      </div>
+      <div class="content-tools">
+        <form id="upload-form" class="content-form">
+          <h3>アップロード</h3>
+          <input name="file" type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,.csv,audio/mpeg,audio/wav,audio/ogg,audio/mp4"
+            required>
+          <textarea name="description" rows="2" maxlength="500"
+            placeholder="どんな画像・ファイルかを入力（任意）"></textarea>
+          <button>アップロード</button>
+          <small>画像・PDF・CSV・音声、10MBまで。大きなJPEGは自動で縮小します。</small>
+        </form>
+        <form id="image-form" class="content-form">
+          <h3>AIで画像を生成・加工</h3>
+          <textarea name="prompt" rows="2" maxlength="2000"
+            placeholder="作りたい画像や加工内容を入力" required></textarea>
+          <select
+            name="sourceId"><option value="">新しい画像を生成</option></select>
+          <button>画像を生成</button>
+        </form>
+      </div>
+      <p id="content-status" class="content-status" role="status"></p>
+      <div id="contents-list" class="contents-grid"></div>
+    </dialog>
+    <dialog id="mypage-dialog" class="mypage-dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">MY PAGE</p>
+          <h2 id="mypage-user-id"></h2>
+        </div>
+        <button id="mypage-close" class="quiet" aria-label="閉じる">×</button>
+      </div>
+      <p>現在のポイント: <strong id="mypage-points"></strong></p>
+      <form id="mypage-password-form">
+        <h3>パスワード変更</h3>
+        <label>現在のパスワード <input name="currentPassword" type="password" required autocomplete="current-password"></label>
+        <label>新しいパスワード <input name="newPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label>
+        <p class="error"></p><button>パスワードを変更</button>
+      </form>
+    </dialog>
+    <dialog id="share-dialog" class="share-dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">SHARE</p>
+          <h2>サイトを共有</h2>
+        </div>
+        <button id="share-close" class="quiet" aria-label="閉じる">×</button>
+      </div>
+      <div id="share-content">
+        <img id="share-qr" alt="公開サイトのQRコード" width="320" height="320">
+        <a id="share-url" target="_blank" rel="noopener"></a>
+      </div>
+      <p id="share-message" class="error"></p>
+    </dialog>
+    <dialog id="history-dialog" class="history-dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">HISTORY</p>
+          <h2>作成履歴</h2>
+        </div>
+        <button id="history-close" class="quiet" aria-label="閉じる">×</button>
+      </div>
+      <p>戻したい版を選択してください。</p>
+      <p id="history-status" class="error" role="status"></p>
+      <div id="history-list" class="history-list"></div>
+    </dialog>
+    <dialog id="trash-dialog" class="history-dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">TRASH</p>
+          <h2>ゴミ箱</h2>
+        </div>
+        <button id="trash-close" class="quiet" aria-label="閉じる">×</button>
+      </div>
+      <p id="trash-status" class="error" role="status"></p>
+      <div id="trash-list" class="history-list"></div>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

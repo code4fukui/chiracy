@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chiracy 管理</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body class="admin-body">
+    <header><span class="brand">Chiracy <small>管理</small></span><button id="admin-logout" class="quiet" hidden>ログアウト</button></header>
+    <main class="admin-main">
+      <section id="admin-panel">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">ADMIN</p>
+            <h1>ユーザー管理</h1>
+          </div>
+        </div>
+        <form id="initial-points-form" class="admin-setting">
+          <label>新規ユーザーの初期ポイント <input name="initial_points" type="number" min="0" max="1000000" required></label>
+          <button>設定を保存</button>
+        </form>
+        <p id="admin-status" role="status"></p>
+        <div class="admin-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>ポイント</th>
+                <th>状態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/admin.js"></script>
+  </body>
+</html>

@@ -1,0 +1,2 @@
+ALTER TABLE flyers ADD COLUMN request_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE flyer_versions ADD COLUMN request_text TEXT NOT NULL DEFAULT '';
