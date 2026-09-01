@@ -155,6 +155,55 @@ textarea:focus {
 .service-credit a {
   color: var(--ink);
 }
+.public-apps {
+  width: min(1100px,calc(100% - 2rem));
+  margin: 0 auto 6rem;
+}
+.public-apps-heading h2 {
+  margin: 0 0 1.2rem;
+  font-size: clamp(1.8rem,4vw,2.8rem);
+}
+.public-app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(240px,1fr));
+  gap: 1.2rem;
+}
+.public-app-card {
+  display: grid;
+  gap: .35rem;
+  overflow: hidden;
+  padding: .7rem;
+  border: 1px solid #cde5e3;
+  border-radius: 18px;
+  color: var(--ink);
+  background: white;
+  text-decoration: none;
+  box-shadow: 0 8px 30px #075d680d;
+}
+.public-app-card:hover {
+  border-color: var(--aqua);
+  transform: translateY(-2px);
+}
+.public-app-card small {
+  color: #69716d;
+}
+.public-app-thumbnail {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 11px;
+  background: #edf6f5;
+  pointer-events: none;
+}
+.public-app-thumbnail iframe {
+  position: absolute;
+  inset: 0;
+  width: 200%;
+  height: 200%;
+  border: 0;
+  transform: scale(.5);
+  transform-origin: top left;
+}
 .secondary {
   background: var(--accent);
 }

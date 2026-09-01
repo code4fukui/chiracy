@@ -609,6 +609,19 @@ Deno.test({
       body: JSON.stringify({ content: "クリックゲーム" }),
     });
     if (generated.status !== 200) throw new Error(await generated.text());
+    if ((await (await request("/api/public/apps")).json()).length !== 0) {
+      throw new Error("private app was shown publicly");
+    }
+    await request(`/api/sites/${id}/publish`, {
+      method: "PUT",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ published: true }),
+    });
+    const publicApps = await (await request("/api/public/apps")).json();
+    if (
+      publicApps.length !== 1 || publicApps[0].id !== id ||
+      publicApps[0].url !== `/alice/${id}`
+    ) throw new Error("published app was not shown publicly");
     const apps = await (await request("/api/apps", { headers: { cookie } }))
       .json();
     const sites = await (await request("/api/sites", { headers: { cookie } }))

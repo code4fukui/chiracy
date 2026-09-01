@@ -32,7 +32,41 @@ function show(name) {
   ) {
     $(`#${id}`).hidden = id !== name;
   }
+  $("#public-apps").hidden = name !== "auth";
   $("#user-menu").hidden = !user;
+}
+
+async function loadPublicApps() {
+  const list = $("#public-app-list");
+  list.replaceChildren();
+  try {
+    const apps = await api("/api/public/apps");
+    for (const app of apps) {
+      const link = document.createElement("a");
+      link.className = "public-app-card";
+      link.href = app.url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      const thumbnail = document.createElement("div");
+      thumbnail.className = "public-app-thumbnail";
+      const preview = document.createElement("iframe");
+      preview.src = app.url;
+      preview.title = `${app.title}のプレビュー`;
+      preview.loading = "lazy";
+      preview.tabIndex = -1;
+      preview.setAttribute("sandbox", "allow-scripts");
+      thumbnail.append(preview);
+      const title = document.createElement("strong");
+      title.textContent = app.title;
+      const author = document.createElement("small");
+      author.textContent = `by ${app.user_id}`;
+      link.append(thumbnail, title, author);
+      list.append(link);
+    }
+    $("#public-apps").hidden = !apps.length || Boolean(user);
+  } catch {
+    $("#public-apps").hidden = true;
+  }
 }
 
 function updatePoints(points) {
@@ -61,6 +95,7 @@ async function loadUser() {
     user = null;
     clearUserDisplay();
     show("auth");
+    await loadPublicApps();
   }
 }
 

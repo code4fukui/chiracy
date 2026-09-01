@@ -399,6 +399,19 @@ export function createHandler(
         });
       }
 
+      if (url.pathname === "/api/public/apps" && method === "GET") {
+        return json(
+          db.prepare(
+            `SELECT sites.id, sites.user_id, sites.title, sites.updated_at,
+              '/' || sites.user_id || '/' || sites.id AS url
+             FROM sites
+             WHERE sites.kind = 'app' AND sites.is_published = 1
+               AND sites.deleted_at IS NULL
+             ORDER BY sites.updated_at DESC LIMIT 30`,
+          ).all(),
+        );
+      }
+
       if (url.pathname.startsWith("/api/admin/")) {
         const admin = currentUser(db, request);
         if (!admin?.is_admin || admin.must_change_password) {
