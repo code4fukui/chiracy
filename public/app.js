@@ -19,6 +19,100 @@ async function api(path, options = {}) {
   return data;
 }
 
+function bytesToBase64Url(value) {
+  const bytes = new Uint8Array(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll(
+    "=",
+    "",
+  );
+}
+
+function base64UrlToBytes(value) {
+  const binary = atob(
+    value.replaceAll("-", "+").replaceAll("_", "/") +
+      "=".repeat((4 - value.length % 4) % 4),
+  );
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function publicKeyOptions(options) {
+  const publicKey = { ...options.publicKey };
+  publicKey.challenge = base64UrlToBytes(publicKey.challenge);
+  if (publicKey.user) {
+    publicKey.user = {
+      ...publicKey.user,
+      id: base64UrlToBytes(publicKey.user.id),
+    };
+  }
+  if (publicKey.allowCredentials) {
+    publicKey.allowCredentials = publicKey.allowCredentials.map((
+      credential,
+    ) => ({ ...credential, id: base64UrlToBytes(credential.id) }));
+  }
+  return publicKey;
+}
+
+function credentialPayload(credential) {
+  const response = credential.response;
+  const result = { id: credential.id, type: credential.type, response: {} };
+  for (
+    const key of [
+      "clientDataJSON",
+      "attestationObject",
+      "authenticatorData",
+      "signature",
+      "userHandle",
+    ]
+  ) {
+    if (response[key]) result.response[key] = bytesToBase64Url(response[key]);
+  }
+  return result;
+}
+
+async function registerPasskey({ acceptedTerms }) {
+  if (!globalThis.PublicKeyCredential) {
+    throw new Error("このブラウザはパスキーに対応していません");
+  }
+  const options = await api("/api/passkey/register/options", {
+    method: "POST",
+    body: JSON.stringify({ acceptedTerms }),
+  });
+  const credential = await navigator.credentials.create({
+    publicKey: publicKeyOptions(options),
+  });
+  if (!credential) throw new Error("パスキー登録がキャンセルされました");
+  await api("/api/passkey/register", {
+    method: "POST",
+    body: JSON.stringify({
+      challenge_id: options.challenge_id,
+      ...credentialPayload(credential),
+    }),
+  });
+}
+
+async function loginWithPasskey() {
+  if (!globalThis.PublicKeyCredential) {
+    throw new Error("このブラウザはパスキーに対応していません");
+  }
+  const options = await api("/api/passkey/login/options", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  const credential = await navigator.credentials.get({
+    publicKey: publicKeyOptions(options),
+  });
+  if (!credential) throw new Error("パスキーログインがキャンセルされました");
+  await api("/api/passkey/login", {
+    method: "POST",
+    body: JSON.stringify({
+      challenge_id: options.challenge_id,
+      ...credentialPayload(credential),
+    }),
+  });
+}
+
 function show(name) {
   for (
     const id of [
@@ -32,7 +126,8 @@ function show(name) {
   ) {
     $(`#${id}`).hidden = id !== name;
   }
-  $("#public-apps").hidden = name !== "auth";
+  $("#public-apps").hidden = true;
+  $("#login-open").hidden = !!user;
   $("#user-menu").hidden = !user;
 }
 
@@ -66,7 +161,7 @@ async function loadPublicApps() {
   try {
     const apps = await api("/api/public/apps");
     renderPublicApps($("#public-app-list"), apps);
-    $("#public-apps").hidden = !apps.length;
+    $("#public-apps").hidden = true;
   } catch {
     $("#public-apps").hidden = true;
   }
@@ -631,10 +726,107 @@ $("#user-id").addEventListener("click", () => {
   $("#mypage-points").textContent = `${user.points} pt`;
   $("#mypage-password-form").reset();
   $("#mypage-password-form .error").textContent = "";
+  $("#passkey-status").textContent = "";
+  const passwordEnabled = Boolean(user.password_enabled);
+  $("#mypage-password-form").hidden = !passwordEnabled;
+  $("#disable-password").hidden = !passwordEnabled;
   $("#mypage-dialog").showModal();
+  loadPasskeys();
 });
 $("#mypage-close").addEventListener("click", () => {
   $("#mypage-dialog").close();
+});
+
+async function loadPasskeys() {
+  try {
+    const passkeys = await api("/api/passkeys");
+    const list = $("#passkey-list");
+    list.replaceChildren();
+    for (const passkey of passkeys) {
+      const row = document.createElement("div");
+      row.className = "passkey-row";
+      const label = document.createElement("span");
+      label.textContent = passkey.name + "（登録: " +
+        new Date(passkey.created_at).toLocaleDateString("ja-JP") + "）";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "quiet";
+      remove.textContent = "削除";
+      remove.addEventListener("click", async () => {
+        if (!confirm("このパスキーを削除しますか？")) return;
+        try {
+          await api(
+            "/api/passkeys/" + encodeURIComponent(passkey.credential_id),
+            { method: "DELETE" },
+          );
+          await loadPasskeys();
+        } catch (error) {
+          $("#passkey-status").textContent = error.message;
+        }
+      });
+      row.append(label, remove);
+      list.append(row);
+    }
+  } catch (error) {
+    $("#passkey-status").textContent = error.message;
+  }
+}
+
+$("#add-passkey").addEventListener("click", async () => {
+  const button = $("#add-passkey");
+  button.disabled = true;
+  try {
+    await registerPasskey({ acceptedTerms: true });
+    $("#passkey-status").textContent = "パスキーを追加しました。";
+    await loadPasskeys();
+  } catch (error) {
+    $("#passkey-status").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$("#disable-password").addEventListener("click", async () => {
+  if (
+    !confirm(
+      "パスワードログインを無効化しますか？パスキーでのみログインできます。",
+    )
+  ) return;
+  try {
+    await api("/api/password/disable", { method: "PUT" });
+    user.password_enabled = 0;
+    $("#passkey-status").textContent = "パスワードを無効化しました。";
+  } catch (error) {
+    $("#passkey-status").textContent = error.message;
+  }
+});
+$("#delete-account").addEventListener("click", async () => {
+  const confirmation = prompt(
+    "削除するにはログインID「" + user.id + "」を入力してください。",
+  );
+  if (confirmation !== user.id) {
+    if (confirmation !== null) {
+      $("#account-delete-status").textContent = "IDが一致しません。";
+    }
+    return;
+  }
+  if (
+    !confirm("アカウントとすべてのデータを完全に削除します。続行しますか？")
+  ) {
+    return;
+  }
+  const button = $("#delete-account");
+  button.disabled = true;
+  try {
+    await api("/api/account", { method: "DELETE" });
+    $("#mypage-dialog").close();
+    user = null;
+    clearUserDisplay();
+    show("auth");
+  } catch (error) {
+    $("#account-delete-status").textContent = error.message;
+    button.disabled = false;
+  }
 });
 $("#mypage-password-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -712,27 +904,61 @@ $("#image-form").addEventListener("submit", async (event) => {
   }
 });
 
-$("#auth-form").addEventListener("submit", async (event) => {
+$("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const values = Object.fromEntries(new FormData(event.currentTarget));
-  const action = event.submitter.value;
   try {
-    if (action === "register") {
-      if (!event.currentTarget.elements.acceptedTerms.checked) {
-        throw new Error("新規登録には利用規約への同意が必要です");
-      }
-      values.acceptedTerms = true;
-      await api("/api/register", {
-        method: "POST",
-        body: JSON.stringify(values),
-      });
+    if (!values.password) {
+      throw new Error("パスワードを入力してください");
     }
     await api("/api/login", { method: "POST", body: JSON.stringify(values) });
+    $("#login-error").textContent = "";
+    $("#login-dialog").close();
+    await loadUser();
+  } catch (error) {
+    $("#login-error").textContent = error.message;
+  }
+});
+
+$("#passkey-register").addEventListener("click", async () => {
+  const form = $("#auth-form");
+  try {
+    if (!form.elements.acceptedTerms.checked) {
+      throw new Error("新規登録には利用規約への同意が必要です");
+    }
+    await registerPasskey({ acceptedTerms: true });
     $("#auth-error").textContent = "";
     await loadUser();
   } catch (error) {
     $("#auth-error").textContent = error.message;
   }
+});
+
+$("#dialog-passkey-login").addEventListener("click", async () => {
+  try {
+    await loginWithPasskey();
+    $("#login-error").textContent = "";
+    $("#login-dialog").close();
+    await loadUser();
+  } catch (error) {
+    $("#login-error").textContent = error.message;
+  }
+});
+
+$("#login-open").addEventListener("click", () => {
+  $("#login-form").reset();
+  $("#login-form").hidden = true;
+  $("#password-login-link").hidden = false;
+  $("#login-error").textContent = "";
+  $("#login-dialog").showModal();
+});
+$("#password-login-link").addEventListener("click", () => {
+  $("#login-form").hidden = false;
+  $("#password-login-link").hidden = true;
+  $("#login-error").textContent = "";
+});
+$("#login-close").addEventListener("click", () => {
+  $("#login-dialog").close();
 });
 
 $("#password-form").addEventListener("submit", async (event) => {

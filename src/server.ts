@@ -1,6 +1,14 @@
 import type { Database } from "./db.ts";
 import { openDatabase } from "./db.ts";
-import { hashPassword, randomId, verifyPassword } from "./auth.ts";
+import {
+  base64UrlToBytes,
+  bytesToBase64Url,
+  hashPassword,
+  parseRegistration,
+  randomId,
+  verifyAssertion,
+  verifyPassword,
+} from "./auth.ts";
 import {
   type GeneratedImage,
   generateImage,
@@ -35,7 +43,95 @@ type User = {
   must_change_password: number;
   points: number;
   level: number;
+  password_enabled: number;
+  passkey_count: number;
 };
+
+const webAuthnTimeout = 5 * 60 * 1000;
+
+function requestOrigin(request: Request): { origin: string; rpId: string } {
+  const url = new URL(request.url);
+  const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(
+    ",",
+  )[0].trim();
+  if (forwardedProtocol === "https") url.protocol = "https:";
+  return { origin: url.origin, rpId: url.hostname };
+}
+
+function createWebAuthnChallenge(
+  db: Database,
+  kind: "register" | "login",
+  userId: string | null,
+  registrationId: string | null = null,
+) {
+  const id = randomId();
+  const challenge = randomId(32);
+  const expires = new Date(Date.now() + webAuthnTimeout).toISOString();
+  db.prepare(
+    "INSERT INTO webauthn_challenges(id, user_id, kind, challenge, expires_at, registration_id) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(id, userId, kind, challenge, expires, registrationId);
+  return { id, challenge, expires };
+}
+
+function newRegistrationId(db: Database): string {
+  const minimum = 10_000_000;
+  const range = 90_000_000;
+  const limit = Math.floor(0x1_0000_0000 / range) * range;
+  while (true) {
+    const random = new Uint32Array(1);
+    crypto.getRandomValues(random);
+    if (random[0] >= limit) continue;
+    const id = String(minimum + (random[0] % range));
+    if (!db.prepare("SELECT 1 FROM users WHERE id = ?").get(id)) return id;
+  }
+}
+
+function createSession(
+  db: Database,
+  userId: string,
+  request: Request,
+): Response {
+  const session = randomId();
+  const expires = new Date(Date.now() + sessionMaxAge * 1000).toISOString();
+  db.exec("BEGIN");
+  try {
+    db.prepare("INSERT INTO sessions(id, user_id, expires_at) VALUES (?, ?, ?)")
+      .run(session, userId, expires);
+    db.prepare(
+      "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?",
+    )
+      .run(userId);
+    db.exec("COMMIT");
+  } catch (cause) {
+    db.exec("ROLLBACK");
+    throw cause;
+  }
+  return json({ ok: true }, 200, {
+    "set-cookie": sessionCookie(session, request),
+  });
+}
+
+function webAuthnResponse(data: Record<string, unknown>) {
+  const response = data.response;
+  return data && typeof data.id === "string" && response &&
+      typeof response === "object" && !Array.isArray(response)
+    ? response as Record<string, unknown>
+    : null;
+}
+
+function decodeWebAuthnField(value: unknown): Uint8Array<ArrayBuffer> {
+  if (typeof value !== "string" || value.length > 100_000) {
+    throw new Error("Invalid WebAuthn data");
+  }
+  return base64UrlToBytes(value);
+}
+
+function normalizeCredentialId(value: unknown): string {
+  if (typeof value !== "string" || !value) {
+    throw new Error("Invalid credential ID");
+  }
+  return bytesToBase64Url(base64UrlToBytes(value));
+}
 
 function envNumber(name: string, fallback: number): number {
   try {
@@ -127,6 +223,8 @@ function currentUser(db: Database, request: Request): User | null {
   if (!session) return null;
   return (db.prepare(
     `SELECT users.id, users.is_admin, users.must_change_password, users.points,
+      (users.password_hash != '') AS password_enabled,
+      (SELECT COUNT(*) FROM passkeys WHERE passkeys.user_id = users.id) AS passkey_count,
       MAX(users.level, CASE
         WHEN EXISTS (SELECT 1 FROM flyers WHERE flyers.user_id = users.id)
           OR EXISTS (SELECT 1 FROM sites WHERE sites.user_id = users.id) THEN 3
@@ -326,6 +424,8 @@ export function createHandler(
       }
 
       if (url.pathname === "/api/register" && method === "POST") {
+        // Keep the old endpoint for existing API clients. The web UI uses
+        // /api/passkey/register for all new registrations.
         const data = await body(request);
         const id = typeof data?.id === "string" ? data.id.trim() : "";
         const password = typeof data?.password === "string"
@@ -347,13 +447,122 @@ export function createHandler(
             ).get() as { value: string }).value,
           );
           db.prepare(
-            `INSERT INTO users(id, password_hash, points, terms_accepted_at)
-             VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
-          ).run(id, await hashPassword(password), initialPoints);
+            "INSERT INTO users(id, password_hash, points, terms_accepted_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+          )
+            .run(id, await hashPassword(password), initialPoints);
         } catch {
           return error("このIDは使用できません", 409);
         }
         return json({ ok: true }, 201);
+      }
+
+      if (
+        url.pathname === "/api/passkey/register/options" && method === "POST"
+      ) {
+        const data = await body(request);
+        const signedIn = currentUser(db, request);
+        const id = signedIn?.id ?? newRegistrationId(db);
+        if (!signedIn && data?.acceptedTerms !== true) {
+          return error("利用規約への同意が必要です");
+        }
+        const challenge = createWebAuthnChallenge(
+          db,
+          "register",
+          signedIn?.id ?? null,
+          id,
+        );
+        const { rpId } = requestOrigin(request);
+        return json({
+          challenge_id: challenge.id,
+          registration_id: id,
+          publicKey: {
+            challenge: challenge.challenge,
+            rp: { name: "Chiracy", id: rpId },
+            user: {
+              id: bytesToBase64Url(new TextEncoder().encode(id)),
+              name: id,
+              displayName: id,
+            },
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+            timeout: webAuthnTimeout,
+            authenticatorSelection: {
+              residentKey: "required",
+              userVerification: "preferred",
+            },
+            attestation: "none",
+          },
+        });
+      }
+
+      if (url.pathname === "/api/passkey/register" && method === "POST") {
+        const data = await body(request);
+        const challengeId = typeof data?.challenge_id === "string"
+          ? data.challenge_id
+          : "";
+        const response = data ? webAuthnResponse(data) : null;
+        if (!challengeId || !response) {
+          return error("Invalid passkey registration");
+        }
+        const challenge = db.prepare(
+          "SELECT challenge, user_id, registration_id, expires_at FROM webauthn_challenges WHERE id = ? AND kind = 'register'",
+        ).get(challengeId) as {
+          challenge: string;
+          user_id: string | null;
+          registration_id: string;
+          expires_at: string;
+        } | undefined;
+        if (!challenge || Date.parse(challenge.expires_at) <= Date.now()) {
+          return error("パスキー登録の有効期限が切れています", 400);
+        }
+        try {
+          const credential = await parseRegistration(
+            decodeWebAuthnField(response.clientDataJSON),
+            decodeWebAuthnField(response.attestationObject),
+            challenge.challenge,
+            requestOrigin(request).origin,
+            requestOrigin(request).rpId,
+          );
+          db.exec("BEGIN");
+          try {
+            const id = challenge.registration_id;
+            if (!id) throw new Error("Invalid challenge");
+            if (challenge.user_id === null) {
+              const initialPoints = Number(
+                (db.prepare(
+                  "SELECT value FROM settings WHERE key = 'initial_points'",
+                ).get() as { value: string }).value,
+              );
+              db.prepare(
+                "INSERT INTO users(id, password_hash, points, terms_accepted_at) VALUES (?, '', ?, CURRENT_TIMESTAMP)",
+              )
+                .run(id, initialPoints);
+            }
+            db.prepare(
+              "INSERT INTO passkeys(credential_id, user_id, public_key, sign_count) VALUES (?, ?, ?, ?)",
+            )
+              .run(
+                credential.credentialId,
+                id,
+                credential.publicKey,
+                credential.signCount,
+              );
+            db.prepare("DELETE FROM webauthn_challenges WHERE id = ?").run(
+              challengeId,
+            );
+            db.exec("COMMIT");
+          } catch (cause) {
+            db.exec("ROLLBACK");
+            throw cause;
+          }
+          return challenge.user_id === null
+            ? await createSession(db, challenge.registration_id, request)
+            : json({ ok: true });
+        } catch (cause) {
+          if (cause instanceof Error && cause.message.includes("UNIQUE")) {
+            return error("このIDまたはパスキーは使用できません", 409);
+          }
+          return error("パスキー登録に失敗しました", 400);
+        }
       }
 
       if (url.pathname === "/api/login" && method === "POST") {
@@ -366,27 +575,105 @@ export function createHandler(
           "SELECT id, password_hash FROM users WHERE id = ? AND is_banned = 0",
         ).get(id) as { id: string; password_hash: string } | undefined;
         if (
-          !account || !(await verifyPassword(password, account.password_hash))
+          !account || !account.password_hash ||
+          !(await verifyPassword(password, account.password_hash))
         ) return error("Invalid ID or password", 401);
-        const session = randomId();
-        const expires = new Date(Date.now() + sessionMaxAge * 1000)
-          .toISOString();
-        db.exec("BEGIN");
-        try {
-          db.prepare(
-            "INSERT INTO sessions(id, user_id, expires_at) VALUES (?, ?, ?)",
-          ).run(session, account.id, expires);
-          db.prepare(
-            "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?",
-          ).run(account.id);
-          db.exec("COMMIT");
-        } catch (cause) {
-          db.exec("ROLLBACK");
-          throw cause;
-        }
-        return json({ ok: true }, 200, {
-          "set-cookie": sessionCookie(session, request),
+        return await createSession(db, account.id, request);
+      }
+
+      if (url.pathname === "/api/passkey/login/options" && method === "POST") {
+        const data = await body(request);
+        const id = typeof data?.id === "string" ? data.id.trim() : "";
+        const account = id
+          ? db.prepare(
+            "SELECT id FROM users WHERE id = ? AND is_banned = 0",
+          ).get(id) as { id: string } | undefined
+          : undefined;
+        if (id && !account) return error("Invalid ID or passkey", 401);
+        const keys = account
+          ? db.prepare(
+            "SELECT credential_id FROM passkeys WHERE user_id = ?",
+          ).all(id) as Array<{ credential_id: string }>
+          : [];
+        if (id && !keys.length) return error("Invalid ID or passkey", 401);
+        const challenge = createWebAuthnChallenge(
+          db,
+          "login",
+          account?.id ?? null,
+        );
+        const { rpId } = requestOrigin(request);
+        return json({
+          challenge_id: challenge.id,
+          publicKey: {
+            challenge: challenge.challenge,
+            rpId,
+            timeout: webAuthnTimeout,
+            userVerification: "preferred",
+            ...(keys.length
+              ? {
+                allowCredentials: keys.map((key) => ({
+                  type: "public-key",
+                  id: key.credential_id,
+                })),
+              }
+              : {}),
+          },
         });
+      }
+
+      if (url.pathname === "/api/passkey/login" && method === "POST") {
+        const data = await body(request);
+        const challengeId = typeof data?.challenge_id === "string"
+          ? data.challenge_id
+          : "";
+        let credentialId = "";
+        try {
+          credentialId = normalizeCredentialId(data?.id);
+        } catch {
+          return error("Invalid ID or passkey", 401);
+        }
+        const response = data ? webAuthnResponse(data) : null;
+        const challenge = db.prepare(
+          "SELECT challenge, user_id, expires_at FROM webauthn_challenges WHERE id = ? AND kind = 'login'",
+        ).get(challengeId) as {
+          challenge: string;
+          user_id: string | null;
+          expires_at: string;
+        } | undefined;
+        const passkey = db.prepare(
+          "SELECT public_key, sign_count, user_id FROM passkeys WHERE credential_id = ?",
+        ).get(credentialId) as {
+          public_key: string;
+          sign_count: number;
+          user_id: string;
+        } | undefined;
+        if (
+          !challenge || !passkey ||
+          (challenge.user_id !== null &&
+            challenge.user_id !== passkey.user_id) ||
+          !response || Date.parse(challenge.expires_at) <= Date.now()
+        ) return error("Invalid ID or passkey", 401);
+        try {
+          const signCount = await verifyAssertion(
+            decodeWebAuthnField(response.clientDataJSON),
+            decodeWebAuthnField(response.authenticatorData),
+            decodeWebAuthnField(response.signature),
+            challenge.challenge,
+            requestOrigin(request).origin,
+            requestOrigin(request).rpId,
+            passkey.public_key,
+            passkey.sign_count,
+          );
+          db.prepare(
+            "UPDATE passkeys SET sign_count = ?, last_used_at = CURRENT_TIMESTAMP WHERE credential_id = ?",
+          ).run(signCount, credentialId);
+          db.prepare("DELETE FROM webauthn_challenges WHERE id = ?").run(
+            challengeId,
+          );
+          return await createSession(db, passkey.user_id, request);
+        } catch {
+          return error("Invalid ID or passkey", 401);
+        }
       }
 
       if (url.pathname === "/api/logout" && method === "POST") {
@@ -487,6 +774,71 @@ export function createHandler(
       if (!user) return error("Authentication required", 401);
       if (url.pathname === "/api/me" && method === "GET") {
         return json(user);
+      }
+
+      if (url.pathname === "/api/account" && method === "DELETE") {
+        if (user.is_admin) {
+          const admins = (db.prepare(
+            "SELECT COUNT(*) AS count FROM users WHERE is_admin = 1 AND is_banned = 0",
+          ).get() as { count: number }).count;
+          if (admins <= 1) {
+            return error("最後の管理者アカウントは削除できません", 400);
+          }
+        }
+        db.exec("BEGIN");
+        try {
+          db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
+          db.exec("COMMIT");
+        } catch (cause) {
+          db.exec("ROLLBACK");
+          throw cause;
+        }
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "set-cookie": "session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+          },
+        });
+      }
+
+      if (url.pathname === "/api/passkeys" && method === "GET") {
+        return json(
+          db.prepare(
+            "SELECT credential_id, name, created_at, last_used_at FROM passkeys WHERE user_id = ? ORDER BY created_at",
+          ).all(user.id),
+        );
+      }
+
+      const passkeyDelete = url.pathname.match(/^\/api\/passkeys\/([^/]+)$/);
+      if (passkeyDelete && method === "DELETE") {
+        const count = (db.prepare(
+          "SELECT COUNT(*) AS count FROM passkeys WHERE user_id = ?",
+        ).get(user.id) as { count: number }).count;
+        if (!user.password_enabled && count <= 1) {
+          return error("パスキーを1つ以上残してください", 400);
+        }
+        const result = db.prepare(
+          "DELETE FROM passkeys WHERE credential_id = ? AND user_id = ?",
+        ).run(passkeyDelete[1], user.id);
+        if (!result.changes) return error("パスキーが見つかりません", 404);
+        return json({ ok: true });
+      }
+
+      if (url.pathname === "/api/password/disable" && method === "PUT") {
+        const count = (db.prepare(
+          "SELECT COUNT(*) AS count FROM passkeys WHERE user_id = ?",
+        ).get(user.id) as { count: number }).count;
+        if (!count) {
+          return error(
+            "パスワードを無効化するにはパスキーを追加してください",
+            400,
+          );
+        }
+        db.prepare(
+          "UPDATE users SET password_hash = '', must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        )
+          .run(user.id);
+        return json({ ok: true });
       }
 
       if (url.pathname === "/api/password" && method === "PUT") {

@@ -46,6 +46,12 @@ import migration015 from "../migrations/015_make_contents_user_wide.sql" with {
 import migration016 from "../migrations/016_add_last_login.sql" with {
   type: "text",
 };
+import migration017 from "../migrations/017_add_passkeys.sql" with {
+  type: "text",
+};
+import migration018 from "../migrations/018_add_registration_id.sql" with {
+  type: "text",
+};
 
 export type Database = DatabaseSync;
 
@@ -84,6 +90,8 @@ export async function openDatabase(
     ["014_add_user_level.sql", migration014],
     ["015_make_contents_user_wide.sql", migration015],
     ["016_add_last_login.sql", migration016],
+    ["017_add_passkeys.sql", migration017],
+    ["018_add_registration_id.sql", migration018],
   ] as const;
   for (const [version, sql] of migrations) {
     if (applied.get(version)) continue;

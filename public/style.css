@@ -79,6 +79,29 @@ header {
 #user-id {
   font-weight: 700;
 }
+.passkey-settings {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #cde5e3;
+}
+.passkey-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .45rem 0;
+}
+.account-danger {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e4b5ae;
+}
+.account-danger h3 {
+  color: #b52e20;
+}
+.danger-button {
+  background: #b52e20;
+}
 .quiet {
   background: transparent;
   color: var(--ink);
@@ -106,6 +129,25 @@ header {
 }
 .auth-content {
   min-width: 0;
+}
+.passkey-lead {
+  margin: 0 0 1rem;
+  padding: .7rem 1rem;
+  border-radius: 14px;
+  color: #075d68;
+  background: #35aeb71c;
+  font-weight: 700;
+}
+.passkey-primary {
+  font-size: 1.05rem;
+  padding: .9rem 1.4rem;
+  background: var(--accent);
+  box-shadow: 0 8px 20px #f17d8338;
+}
+.quiet-action {
+  background: transparent;
+  color: var(--ink);
+  padding: .4rem;
 }
 #auth .auth-content h1 {
   font-size: clamp(1rem,5vw,1.9rem);
@@ -429,6 +471,28 @@ dialog::backdrop {
 }
 .history-dialog {
   max-width: 620px;
+}
+.login-dialog {
+  max-width: 460px;
+}
+.login-primary {
+  padding: 1rem 0 .5rem;
+  text-align: center;
+}
+.login-primary button {
+  width: 100%;
+  font-size: 1.1rem;
+}
+.login-primary p {
+  margin: .7rem 0;
+  color: #69716d;
+  font-size: .85rem;
+}
+.text-link {
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  text-decoration: underline;
 }
 .history-list {
   display: grid;

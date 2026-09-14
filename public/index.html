@@ -12,6 +12,7 @@
     <header>
       <a id="brand-home" class="brand"
         href="/"><img src="/logo.png" alt="Chiracy まちの声を、未来のチカラに。"></a>
+      <button id="login-open" class="quiet">ログイン</button>
       <div id="user-menu"
         hidden><span id="points"></span><button id="user-id" class="quiet"></button><button id="logout" class="quiet">ログアウト</button></div>
     </header>
@@ -22,18 +23,42 @@
           <p class="eyebrow">AIで、アイデアをカタチに。</p>
           <h1>まちの声を、未来のチカラに。</h1>
           <form id="auth-form">
-            <label>ID <input name="id" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_-]+" required autocomplete="username"></label>
-            <label>パスワード <input name="password" type="password" minlength="8" maxlength="128" required autocomplete="current-password"></label>
+            <p
+              class="passkey-lead">パスキーでかんたん・安全に始められます。新規登録IDは8桁の数字を自動発行します。</p>
             <label
               class="terms-consent"><input name="acceptedTerms" type="checkbox"> <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>に同意して新規登録する</label>
             <p id="auth-error" class="error"></p>
             <div
-              class="actions"><button type="submit" name="action" value="login">ログイン</button><button type="submit" name="action" value="register" class="secondary">新規登録</button></div>
+              class="actions"><button id="passkey-register" type="button" class="passkey-primary">パスキーで新規登録してはじめる</button></div>
           </form>
           <p
             class="service-credit">サービス運営 <a href="https://code4fukui.github.io/" target="_blank" rel="noopener">Code for FUKUI</a><br><a href="https://github.com/code4fukui/chiracy" target="_blank" rel="noopener">オープンソース code4fukui/chiracy</a></p>
         </div>
       </section>
+
+      <dialog id="login-dialog" class="login-dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">LOGIN</p>
+            <h2>ログイン</h2>
+          </div>
+          <button id="login-close" class="quiet" type="button"
+            aria-label="閉じる">×</button>
+        </div>
+        <div class="login-primary">
+          <button id="dialog-passkey-login"
+            type="button">パスキーでログイン</button>
+          <p>端末のパスキーを使ってログインします。ID入力は不要です。</p>
+        </div>
+        <p id="login-error" class="error"></p>
+        <button id="password-login-link" type="button"
+          class="text-link">パスワードでログイン</button>
+        <form id="login-form" hidden>
+          <label>ログインID <input name="id" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_-]+" required autocomplete="username"></label>
+          <label>パスワード <input name="password" type="password" minlength="8" maxlength="128" required autocomplete="current-password"></label>
+          <button type="submit" class="secondary">ログイン</button>
+        </form>
+      </dialog>
 
       <section id="public-apps" class="public-apps" hidden>
         <div class="public-apps-heading">
@@ -201,6 +226,22 @@
         <label>新しいパスワード <input name="newPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label>
         <p class="error"></p><button>パスワードを変更</button>
       </form>
+      <section class="passkey-settings">
+        <h3>パスキー</h3>
+        <p>パスキーで安全にログインできます。端末や認証器を複数登録できます。</p>
+        <div id="passkey-list"></div>
+        <button id="add-passkey" type="button">この端末のパスキーを追加</button>
+        <button id="disable-password" type="button"
+          class="secondary">パスワードを無効化</button>
+        <p id="passkey-status" class="error" role="status"></p>
+        <div class="account-danger">
+          <h3>アカウント削除</h3>
+          <p>アカウントと作成したデータをすべて削除します。この操作は取り消せません。</p>
+          <button id="delete-account" type="button"
+            class="danger-button">アカウントを削除</button>
+          <p id="account-delete-status" class="error" role="status"></p>
+        </div>
+      </section>
     </dialog>
     <dialog id="share-dialog" class="share-dialog">
       <div class="dialog-header">
