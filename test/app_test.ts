@@ -554,26 +554,20 @@ Deno.test({
     const cookie = await registerAndLogin("beginner", 1);
     const headers = { cookie };
     if (
-      (await request("/api/flyers", { method: "POST", headers })).status !==
-        403 ||
       (await request("/api/sites", { method: "POST", headers })).status !== 403
-    ) throw new Error("locked content was available at level 1");
-
-    const plan = await request("/api/plans", { method: "POST", headers });
-    if (plan.status !== 201 || (await plan.json()).level !== 2) {
-      throw new Error("creating a plan did not unlock flyers");
+    ) {
+      throw new Error("site should still be locked at level 1");
     }
-    db.prepare("UPDATE users SET level = 1 WHERE id = ?").run("beginner");
-    const level2 = await (await request("/api/me", { headers })).json();
-    if (level2.level !== 2) throw new Error("level 2 was not saved");
-    if (
-      (await request("/api/apps", { method: "POST", headers })).status !== 403
-    ) throw new Error("apps were available before creating a flyer");
-
+    const initialFlyer = await request("/api/flyers", {
+      method: "POST",
+      headers,
+    });
+    const initialApp = await request("/api/apps", { method: "POST", headers });
+    if (initialFlyer.status !== 201 || initialApp.status !== 201) {
+      throw new Error("flyers and apps should be available at level 1");
+    }
     const flyer = await request("/api/flyers", { method: "POST", headers });
-    if (flyer.status !== 201 || (await flyer.json()).level !== 3) {
-      throw new Error("creating a flyer did not unlock sites and apps");
-    }
+    if (flyer.status !== 201) throw new Error("flyer creation failed");
     const site = await request("/api/sites", { method: "POST", headers });
     const app = await request("/api/apps", { method: "POST", headers });
     if (site.status !== 201 || app.status !== 201) {

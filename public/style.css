@@ -267,6 +267,11 @@ textarea:focus {
 .terms-page a {
   color: var(--accent);
 }
+.terms-note {
+  margin: .5rem 0 1rem;
+  color: #69716d;
+  font-size: .9rem;
+}
 .terms-page {
   width: min(720px,calc(100% - 2rem));
   margin: 0 auto;
@@ -474,6 +479,16 @@ dialog::backdrop {
 }
 .login-dialog {
   max-width: 460px;
+}
+.terms-dialog {
+  width: min(720px, calc(100% - 2rem));
+}
+.terms-dialog iframe {
+  width: 100%;
+  height: min(55vh, 520px);
+  border: 1px solid #cde5e3;
+  border-radius: 12px;
+  background: white;
 }
 .login-primary {
   padding: 1rem 0 .5rem;

@@ -12,7 +12,6 @@
     <header>
       <a id="brand-home" class="brand"
         href="/"><img src="/logo.png" alt="Chiracy まちの声を、未来のチカラに。"></a>
-      <button id="login-open" class="quiet">ログイン</button>
       <div id="user-menu"
         hidden><span id="points"></span><button id="user-id" class="quiet"></button><button id="logout" class="quiet">ログアウト</button></div>
     </header>
@@ -25,16 +24,31 @@
           <form id="auth-form">
             <p
               class="passkey-lead">パスキーでかんたん・安全に始められます。新規登録IDは8桁の数字を自動発行します。</p>
-            <label
-              class="terms-consent"><input name="acceptedTerms" type="checkbox"> <a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0</a>に同意して新規登録する</label>
+            <p
+              class="terms-note"><a href="/terms" target="_blank" rel="noopener">NANI Terms v1.0 利用規約</a>をご確認ください。</p>
             <p id="auth-error" class="error"></p>
             <div
-              class="actions"><button id="passkey-register" type="button" class="passkey-primary">パスキーで新規登録してはじめる</button></div>
+              class="actions"><button id="passkey-register" type="button" class="passkey-primary">パスキーでログインまたは新規登録する</button></div>
           </form>
           <p
             class="service-credit">サービス運営 <a href="https://code4fukui.github.io/" target="_blank" rel="noopener">Code for FUKUI</a><br><a href="https://github.com/code4fukui/chiracy" target="_blank" rel="noopener">オープンソース code4fukui/chiracy</a></p>
         </div>
       </section>
+
+      <dialog id="terms-dialog" class="terms-dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">TERMS</p>
+            <h2>利用規約</h2>
+          </div>
+          <button id="terms-close" class="quiet" type="button"
+            aria-label="閉じる">×</button>
+        </div>
+        <iframe src="/terms" title="NANI Terms v1.0 利用規約"></iframe>
+        <p id="terms-error" class="error"></p>
+        <button id="terms-accept" type="button"
+          class="passkey-primary">同意してアカウントを作成</button>
+      </dialog>
 
       <dialog id="login-dialog" class="login-dialog">
         <div class="dialog-header">
@@ -49,6 +63,8 @@
           <button id="dialog-passkey-login"
             type="button">パスキーでログイン</button>
           <p>端末のパスキーを使ってログインします。ID入力は不要です。</p>
+          <button id="dialog-passkey-register" type="button"
+            class="text-link">パスキーで新規登録する</button>
         </div>
         <p id="login-error" class="error"></p>
         <button id="password-login-link" type="button"

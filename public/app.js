@@ -127,7 +127,6 @@ function show(name) {
     $(`#${id}`).hidden = id !== name;
   }
   $("#public-apps").hidden = true;
-  $("#login-open").hidden = !!user;
   $("#user-menu").hidden = !user;
 }
 
@@ -201,20 +200,18 @@ async function showDashboard() {
   show("dashboard");
   user = await api("/api/me");
   updatePoints(user.points);
-  const flyerUnlocked = user.level >= 2;
+  const flyerUnlocked = true;
   const webUnlocked = user.level >= 3;
   $("#new-flyer").disabled = !flyerUnlocked;
   $("#new-flyer").textContent = flyerUnlocked
     ? "＋新規チラシ"
     : "🔒 企画を1つ作ると解放";
   $("#new-site").disabled = !webUnlocked;
-  $("#new-app").disabled = !webUnlocked;
+  $("#new-app").disabled = false;
   $("#new-site").textContent = webUnlocked
     ? "＋新規サイト"
     : "🔒 チラシを1つ作ると解放";
-  $("#new-app").textContent = webUnlocked
-    ? "＋新規アプリ"
-    : "🔒 チラシを1つ作ると解放";
+  $("#new-app").textContent = "＋新規アプリ";
   const [plans, flyers, sites, apps, publicApps] = await Promise.all([
     api("/api/plans"),
     api("/api/flyers"),
@@ -920,17 +917,35 @@ $("#login-form").addEventListener("submit", async (event) => {
   }
 });
 
-$("#passkey-register").addEventListener("click", async () => {
-  const form = $("#auth-form");
+let registrationInProgress = false;
+$("#passkey-register").addEventListener("click", () => {
+  if (registrationInProgress) return;
+  openLoginDialog();
+});
+$("#dialog-passkey-register").addEventListener("click", () => {
+  if (registrationInProgress) return;
+  $("#login-dialog").close();
+  $("#terms-error").textContent = "";
+  $("#terms-dialog").showModal();
+});
+$("#terms-close").addEventListener("click", () => {
+  $("#terms-dialog").close();
+});
+$("#terms-accept").addEventListener("click", async () => {
+  if (registrationInProgress) return;
+  registrationInProgress = true;
+  const button = $("#terms-accept");
+  button.disabled = true;
   try {
-    if (!form.elements.acceptedTerms.checked) {
-      throw new Error("新規登録には利用規約への同意が必要です");
-    }
     await registerPasskey({ acceptedTerms: true });
+    $("#terms-dialog").close();
     $("#auth-error").textContent = "";
     await loadUser();
   } catch (error) {
-    $("#auth-error").textContent = error.message;
+    $("#terms-error").textContent = error.message;
+  } finally {
+    registrationInProgress = false;
+    button.disabled = false;
   }
 });
 
@@ -945,13 +960,13 @@ $("#dialog-passkey-login").addEventListener("click", async () => {
   }
 });
 
-$("#login-open").addEventListener("click", () => {
+function openLoginDialog() {
   $("#login-form").reset();
   $("#login-form").hidden = true;
   $("#password-login-link").hidden = false;
   $("#login-error").textContent = "";
   $("#login-dialog").showModal();
-});
+}
 $("#password-login-link").addEventListener("click", () => {
   $("#login-form").hidden = false;
   $("#password-login-link").hidden = true;

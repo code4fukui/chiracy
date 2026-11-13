@@ -1019,9 +1019,6 @@ export function createHandler(
         );
       }
       if (url.pathname === "/api/flyers" && method === "POST") {
-        if (user.level < 2) {
-          return error("企画を1つ作るとチラシが解放されます", 403);
-        }
         const id = randomId(9);
         db.exec("BEGIN");
         try {
@@ -1252,7 +1249,7 @@ export function createHandler(
         (url.pathname === "/api/sites" || url.pathname === "/api/apps") &&
         method === "POST"
       ) {
-        if (user.level < 3) {
+        if (url.pathname === "/api/sites" && user.level < 3) {
           return error("チラシを1つ作るとサイトとアプリが解放されます", 403);
         }
         const isApp = url.pathname === "/api/apps";
