@@ -200,17 +200,11 @@ async function showDashboard() {
   show("dashboard");
   user = await api("/api/me");
   updatePoints(user.points);
-  const flyerUnlocked = true;
-  const webUnlocked = user.level >= 3;
-  $("#new-flyer").disabled = !flyerUnlocked;
-  $("#new-flyer").textContent = flyerUnlocked
-    ? "＋新規チラシ"
-    : "🔒 企画を1つ作ると解放";
-  $("#new-site").disabled = !webUnlocked;
+  $("#new-flyer").disabled = false;
+  $("#new-flyer").textContent = "＋新規チラシ";
+  $("#new-site").disabled = false;
   $("#new-app").disabled = false;
-  $("#new-site").textContent = webUnlocked
-    ? "＋新規サイト"
-    : "🔒 チラシを1つ作ると解放";
+  $("#new-site").textContent = "＋新規サイト";
   $("#new-app").textContent = "＋新規アプリ";
   const [plans, flyers, sites, apps, publicApps] = await Promise.all([
     api("/api/plans"),
@@ -962,18 +956,50 @@ $("#dialog-passkey-login").addEventListener("click", async () => {
 
 function openLoginDialog() {
   $("#login-form").reset();
+  $("#register-form").reset();
   $("#login-form").hidden = true;
+  $("#register-form").hidden = true;
   $("#password-login-link").hidden = false;
+  $("#password-register-link").hidden = false;
   $("#login-error").textContent = "";
   $("#login-dialog").showModal();
 }
 $("#password-login-link").addEventListener("click", () => {
   $("#login-form").hidden = false;
+  $("#register-form").hidden = true;
   $("#password-login-link").hidden = true;
+  $("#password-register-link").hidden = true;
+  $("#login-error").textContent = "";
+});
+$("#password-register-link").addEventListener("click", () => {
+  $("#register-form").hidden = false;
+  $("#login-form").hidden = true;
+  $("#password-login-link").hidden = true;
+  $("#password-register-link").hidden = true;
   $("#login-error").textContent = "";
 });
 $("#login-close").addEventListener("click", () => {
   $("#login-dialog").close();
+});
+
+$("#register-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const values = Object.fromEntries(new FormData(event.currentTarget));
+  try {
+    await api("/api/register", {
+      method: "POST",
+      body: JSON.stringify({ ...values, acceptedTerms: true }),
+    });
+    await api("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ id: values.id, password: values.password }),
+    });
+    $("#login-error").textContent = "";
+    $("#login-dialog").close();
+    await loadUser();
+  } catch (error) {
+    $("#login-error").textContent = error.message;
+  }
 });
 
 $("#password-form").addEventListener("submit", async (event) => {
@@ -1016,6 +1042,13 @@ $("#new-app").addEventListener(
     await openSite(created.id);
   },
 );
+$("#new-hokuriku-app").addEventListener("click", async () => {
+  const created = await api("/api/apps", {
+    method: "POST",
+    body: JSON.stringify({ template: "hokuriku-tourism" }),
+  });
+  await openSite(created.id);
+});
 $("#new-plan").addEventListener(
   "click",
   async () => {

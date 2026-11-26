@@ -22,6 +22,8 @@ import QRCode from "qrcode";
 const publicRoot = new URL("../public/", import.meta.url);
 const sessionMaxAge = 60 * 60 * 24 * 30;
 const idPattern = /^[a-zA-Z0-9_-]{3,32}$/;
+const emailIdPattern =
+  /^[A-Za-z0-9._+-]+@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/;
 const maxContentSize = 10 * 1024 * 1024;
 const maxChatLength = 10_000;
 const allowedContentTypes = new Set([
@@ -193,7 +195,7 @@ function contentMetadata(
     description: row.description,
     prompt: row.prompt,
     created_at: row.created_at,
-    url: `/${encodeURIComponent(userId)}/content/${row.id}`,
+    url: `/${userId}/content/${row.id}`,
   };
 }
 
@@ -298,7 +300,8 @@ export function createHandler(
     instruction: string,
     html: string,
     title: string,
-  ) => Promise<SiteGeneration> = (instruction, html, title) => {
+    appTemplate?: string,
+  ) => Promise<SiteGeneration> = (instruction, html, title, appTemplate) => {
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
     return generateSite(
@@ -310,6 +313,7 @@ export function createHandler(
       envNumber("OPENAI_TEXT_INPUT_USD_PER_MILLION", 0.2),
       envNumber("OPENAI_TEXT_OUTPUT_USD_PER_MILLION", 1.2),
       envNumber("OPENAI_TEXT_CACHED_INPUT_USD_PER_MILLION", 0.02),
+      appTemplate,
     );
   },
   createImage: (
@@ -361,7 +365,7 @@ export function createHandler(
           return staticFile("/__admin_internal");
         }
         const contentMatch = url.pathname.match(
-          /^\/([a-zA-Z0-9_-]+)\/content\/([a-zA-Z0-9_-]+)$/,
+          /^\/([^/]+)\/content\/([a-zA-Z0-9_-]+)$/,
         );
         if (contentMatch) {
           const content = db.prepare(
@@ -378,7 +382,7 @@ export function createHandler(
               ) AS is_public
              FROM contents
              WHERE contents.user_id = ? AND contents.id = ?`,
-          ).get(contentMatch[1], contentMatch[2]) as {
+          ).get(decodeURIComponent(contentMatch[1]), contentMatch[2]) as {
             name: string;
             mime_type: string;
             data: Uint8Array;
@@ -402,20 +406,25 @@ export function createHandler(
             },
           });
         }
-        const published = url.pathname.match(
-          /^\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)$/,
-        );
+        const published = url.pathname.match(/^\/([^/]+)\/([^/]+)$/);
         if (published) {
           const site = db.prepare(
-            "SELECT html FROM sites WHERE user_id = ? AND id = ? AND is_published = 1 AND deleted_at IS NULL",
+            "SELECT html, kind, app_template FROM sites WHERE user_id = ? AND id = ? AND is_published = 1 AND deleted_at IS NULL",
           )
-            .get(published[1], published[2]) as { html: string } | undefined;
+            .get(decodeURIComponent(published[1]), published[2]) as
+              | { html: string; kind: string; app_template: string }
+              | undefined;
           return site
             ? new Response(site.html, {
               headers: {
                 "content-type": "text/html; charset=utf-8",
                 "content-security-policy":
-                  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' https: data:; media-src 'self'; font-src https: data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'",
+                  `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' https: data:; media-src 'self'; font-src https: data:; connect-src ${
+                    site.kind === "app" &&
+                      site.app_template === "hokuriku-tourism"
+                      ? `https://opendata-hokuriku-kanko.code4fukui.org ${url.origin}/.well-known/appspecific/com.chrome.devtools.json`
+                      : "'none'"
+                  }; form-action 'none'; base-uri 'none'; object-src 'none'`,
               },
             })
             : new Response("Not found", { status: 404 });
@@ -434,8 +443,12 @@ export function createHandler(
         if (data?.acceptedTerms !== true) {
           return error("利用規約への同意が必要です");
         }
-        if (!idPattern.test(id)) {
-          return error("IDは半角英数字・_・-の3〜32文字で入力してください");
+        if (
+          id.length > 254 || (!idPattern.test(id) && !emailIdPattern.test(id))
+        ) {
+          return error(
+            "IDは3〜32文字の半角英数字・_・-、またはメールアドレスで入力してください",
+          );
         }
         if (password.length < 8 || password.length > 128) {
           return error("パスワードは8〜128文字で入力してください");
@@ -567,7 +580,7 @@ export function createHandler(
 
       if (url.pathname === "/api/login" && method === "POST") {
         const data = await body(request);
-        const id = typeof data?.id === "string" ? data.id : "";
+        const id = typeof data?.id === "string" ? data.id.trim() : "";
         const password = typeof data?.password === "string"
           ? data.password
           : "";
@@ -1249,23 +1262,34 @@ export function createHandler(
         (url.pathname === "/api/sites" || url.pathname === "/api/apps") &&
         method === "POST"
       ) {
-        if (url.pathname === "/api/sites" && user.level < 3) {
-          return error("チラシを1つ作るとサイトとアプリが解放されます", 403);
-        }
         const isApp = url.pathname === "/api/apps";
+        const data = isApp && request.headers.get("content-type")?.includes(
+            "application/json",
+          )
+          ? await body(request)
+          : null;
+        const appTemplate = data?.template === "hokuriku-tourism"
+          ? "hokuriku-tourism"
+          : "";
         const id = randomId(9);
-        const title = isApp ? "無題のアプリ" : "無題のサイト";
+        const title = appTemplate === "hokuriku-tourism"
+          ? "北陸観光アプリ"
+          : isApp
+          ? "無題のアプリ"
+          : "無題のサイト";
         const html = firstSite(title);
         db.exec("BEGIN");
         try {
           db.prepare(
-            "INSERT INTO sites(id, user_id, title, html, kind) VALUES (?, ?, ?, ?, ?)",
-          ).run(id, user.id, title, html, isApp ? "app" : "site");
+            "INSERT INTO sites(id, user_id, title, html, kind, app_template) VALUES (?, ?, ?, ?, ?, ?)",
+          ).run(id, user.id, title, html, isApp ? "app" : "site", appTemplate);
           db.prepare(
             "INSERT INTO messages(site_id, role, content) VALUES (?, 'assistant', ?)",
           ).run(
             id,
-            isApp
+            appTemplate === "hokuriku-tourism"
+              ? "北陸観光オープンデータAPIを使うアプリを一緒に作ります。使いたいデータや見せ方を教えてください。API仕様を確認しながら、対話で機能を追加・調整できます。"
+              : isApp
               ? "どんなアプリを作りますか？シンプルなゲームなど、遊び方や欲しい機能を教えてください。"
               : "まず、ウェブサイトのタイトルを教えてください。",
           );
@@ -1474,7 +1498,7 @@ export function createHandler(
       );
       if (match) {
         const site = db.prepare(
-          "SELECT id, title, html, kind, is_published, created_at, updated_at FROM sites WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+          "SELECT id, title, html, kind, app_template, is_published, created_at, updated_at FROM sites WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
         )
           .get(match[1], user.id) as Record<string, unknown> | undefined;
         if (!site) return error("Site not found", 404);
@@ -1488,9 +1512,7 @@ export function createHandler(
           if (!site.is_published) {
             return error("サイトを公開してから共有してください", 409);
           }
-          const publicUrl = `${url.origin}/${encodeURIComponent(user.id)}/${
-            encodeURIComponent(match[1])
-          }`;
+          const publicUrl = `${url.origin}/${user.id}/${match[1]}`;
           const svg = await QRCode.toString(publicUrl, {
             type: "svg",
             width: 320,
@@ -1542,12 +1564,15 @@ export function createHandler(
               }`
               : "";
             const appInstruction = site.kind === "app"
-              ? "\n\nこれは単一HTMLファイルで動くアプリです。CSSとJavaScriptをHTML内に含め、外部ライブラリや通信なしで操作できる完成品にしてください。ゲームの場合は開始・リセット・遊び方を分かりやすく実装してください。"
+              ? site.app_template === "hokuriku-tourism"
+                ? "\n\nこれは北陸観光オープンデータAPIを利用する単一HTMLの対話型アプリです。指定された北陸観光API以外へは通信しないでください。"
+                : "\n\nこれは単一HTMLファイルで動くアプリです。CSSとJavaScriptをHTML内に含め、外部ライブラリや通信なしで操作できる完成品にしてください。ゲームの場合は開始・リセット・遊び方を分かりやすく実装してください。"
               : "";
             generated = await generate(
               content + appInstruction + assetContext,
               site.html as string,
               site.title as string,
+              site.app_template as string,
             );
           } catch (cause) {
             console.error("Website generation failed", cause);

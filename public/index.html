@@ -69,10 +69,19 @@
         <p id="login-error" class="error"></p>
         <button id="password-login-link" type="button"
           class="text-link">パスワードでログイン</button>
+        <button id="password-register-link" type="button"
+          class="text-link">IDとパスワードで新規登録</button>
         <form id="login-form" hidden>
-          <label>ログインID <input name="id" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_-]+" required autocomplete="username"></label>
+          <label>ログインID（メールアドレスも可） <input name="id" maxlength="254" required autocomplete="username"></label>
           <label>パスワード <input name="password" type="password" minlength="8" maxlength="128" required autocomplete="current-password"></label>
           <button type="submit" class="secondary">ログイン</button>
+        </form>
+        <form id="register-form" hidden>
+          <label>ID（半角英数字・_・-、またはメールアドレス） <input name="id" maxlength="254" required autocomplete="username"></label>
+          <label>パスワード <input name="password" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label>
+          <label
+            class="terms-consent"><input name="acceptedTerms" type="checkbox" required> <a href="/terms" target="_blank" rel="noopener">利用規約</a>に同意します</label>
+          <button type="submit" class="secondary">同意して登録</button>
         </form>
       </dialog>
 
@@ -119,7 +128,11 @@
         <div id="sites" class="site-grid"></div>
         <div class="content-heading content-section-title">
           <h2>アプリ</h2>
-          <button id="new-app">＋新規アプリ</button>
+          <div class="actions">
+            <button id="new-app">＋新規アプリ</button>
+            <button id="new-hokuriku-app"
+              class="secondary">＋北陸観光アプリ</button>
+          </div>
         </div>
         <div id="apps" class="site-grid"></div>
         <div class="content-heading content-section-title">

@@ -504,10 +504,20 @@ dialog::backdrop {
   font-size: .85rem;
 }
 .text-link {
+  display: block;
+  margin: .65rem auto;
   padding: 0;
   color: var(--accent);
   background: transparent;
   text-decoration: underline;
+}
+.terms-consent {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.terms-consent input {
+  width: auto;
 }
 .history-list {
   display: grid;

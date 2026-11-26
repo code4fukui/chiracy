@@ -1,0 +1,1 @@
+ALTER TABLE sites ADD COLUMN app_template TEXT NOT NULL DEFAULT '';

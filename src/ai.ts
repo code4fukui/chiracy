@@ -50,6 +50,22 @@ const instructions = `あなたは日本語のウェブサイト制作アシス�
 - titleはサイト名だけを80文字以内で返す
 - replyは実施内容を日本語で簡潔に説明する`;
 
+const hokurikuTourismAppInstructions =
+  `あなたは北陸観光オープンデータを使うアプリの制作アシスタントです。
+ユーザーとの対話に沿って、完成した単一HTML文書を返してください。
+- HTMLにはCSSを<style>内、JavaScriptを<script>内に含める
+- APIのベースURLは https://opendata-hokuriku-kanko.code4fukui.org 。GET APIは /api/meta（データ概要）、/api/columns（列一覧）、/api/columns/{column}?prefecture={県名}（列の値の分布）、/api/aggregate?by={grouping}&metrics={metrics}（集計）、/api/flags?group={purpose|info_source}&by={grouping}（目的・情報源の集計）、/api/comments?q={keyword}&order={newest}&limit={count}（自由記述検索）、/api/responses?fields={columns}&limit={count}（回答抽出）、/api/sql?sql={SQL}（SQL集計）
+- 集計例: /api/aggregate?by=prefecture,answered_year&metrics=count,nps,avg:sat_trip。SQLはPOST /api/sqlにSQL文をプレーンテキスト本文で送る。テーブル名はsurvey
+- /api/columnsの応答は{derived:[{name,type,description,answered}],raw:[{name,type,description,answered}],flag_groups,comment_fields}形式。columns配列を仮定せず、列候補にはderivedとrawのnameを使う
+- 不明な列名やパラメーターを創作せず、必要に応じて先に/api/metaまたは/api/columnsを取得する
+- 外部通信は https://opendata-hokuriku-kanko.code4fukui.org/ のみ許可する。API応答の失敗、空データ、読込中を画面に分かりやすく表示する
+- データ出典として北陸観光オープンデータへのリンクをアプリ内に表示する
+- 出典表記: 北陸インバウンド観光DX・データコンソーシアム（原データ: 富山県 / 石川県 / 福井観光協会「FTAS」）CC BY
+- 既存HTMLがある場合は動作中の機能を維持しながら指示に応じて更新する
+- スマートフォンに対応し、データを見やすく魅力的に表示する
+- titleはアプリ名だけを80文字以内で返す
+- replyは変更内容とデータ利用方法を日本語で簡潔に説明する`;
+
 const planInstructions = `あなたは日本語の企画書作成アシスタントです。
 ユーザーの要望を反映した、実行に使える企画書をMarkdown形式で作成してください。
 - 目的、背景、対象、提供価値、実施内容、スケジュール、予算・体制、成果指標、リスクと対策を必要に応じて整理する
@@ -155,6 +171,7 @@ export async function generateSite(
   inputUsdPerMillion = 0.2,
   outputUsdPerMillion = 1.2,
   cachedInputUsdPerMillion = 0.02,
+  appTemplate = "",
 ): Promise<SiteGeneration> {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -166,7 +183,9 @@ export async function generateSite(
       model,
       store: false,
       max_output_tokens: 12_000,
-      instructions,
+      instructions: appTemplate === "hokuriku-tourism"
+        ? hokurikuTourismAppInstructions
+        : instructions,
       input:
         `現在のタイトル:\n${currentTitle}\n\n現在のHTML:\n${currentHtml}\n\nユーザーの指示:\n${instruction}`,
       text: {
